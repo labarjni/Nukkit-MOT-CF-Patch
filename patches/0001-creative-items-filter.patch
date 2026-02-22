@@ -1,0 +1,167 @@
+Subject: [PATCH] 0001-creative-items-filter
+---
+Index: src/main/java/cn/nukkit/item/ItemCreativePermissions.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/cn/nukkit/item/ItemCreativePermissions.java b/src/main/java/cn/nukkit/item/ItemCreativePermissions.java
+new file mode 100644
+--- /dev/null	(date 1771505604068)
++++ b/src/main/java/cn/nukkit/item/ItemCreativePermissions.java	(date 1771505604068)
+@@ -0,0 +1,32 @@
++package cn.nukkit.item;
++
++import cn.nukkit.Player;
++
++import java.util.*;
++import java.util.function.Predicate;
++
++public final class ItemCreativePermissions {
++
++    private static final String BASE_PERMISSION = "nukkit.creativeitem.";
++
++    private static final Map<String, Predicate<Item>> PERMISSION_GROUPS = new LinkedHashMap<>();
++
++    public static void registerPermissionGroup(String permissionSuffix, Predicate<Item> condition) {
++        PERMISSION_GROUPS.put(permissionSuffix, condition);
++    }
++
++    public static boolean hasPermission(Item item, Player player) {
++        if (player == null) return true;
++
++        for (Map.Entry<String, Predicate<Item>> entry : PERMISSION_GROUPS.entrySet()) {
++            if (entry.getValue().test(item)) {
++                String groupPerm = BASE_PERMISSION + entry.getKey();
++                if (!player.hasPermission(groupPerm)) {
++                    return false;
++                }
++            }
++        }
++
++        return true;
++    }
++}
+\ No newline at end of file
+Index: src/main/java/cn/nukkit/inventory/PlayerInventory.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/cn/nukkit/inventory/PlayerInventory.java b/src/main/java/cn/nukkit/inventory/PlayerInventory.java
+--- a/src/main/java/cn/nukkit/inventory/PlayerInventory.java	(revision a40a0f80c1012c48417757925845f54990e2fff5)
++++ b/src/main/java/cn/nukkit/inventory/PlayerInventory.java	(date 1771505117984)
+@@ -592,21 +592,25 @@
+                 pk.windowid = ContainerSetContentPacketV113.SPECIAL_CREATIVE;
+                 pk.eid = p.getId();
+                 if (!p.isSpectator()) {
+-                    pk.slots = Item.getCreativeItems(p.getGameVersion()).toArray(Item.EMPTY_ARRAY);
++                    pk.slots = Item.getCreativeItems(p).toArray(Item.EMPTY_ARRAY);
+                 }
+                 p.dataPacket(pk);
+             } else {
+                 InventoryContentPacket pk = new InventoryContentPacket();
+                 pk.inventoryId = ContainerIds.CREATIVE;
+                 if (!p.isSpectator()) { //fill it for all gamemodes except spectator
+-                    pk.slots = Item.getCreativeItems(p.getGameVersion()).toArray(Item.EMPTY_ARRAY);
++                    pk.slots = Item.getCreativeItems(p).toArray(Item.EMPTY_ARRAY);
+                 }
+                 p.dataPacket(pk);
+             }
+         } else {
+             CreativeContentPacket pk = new CreativeContentPacket();
+             if (!p.isSpectator()) {
+-                pk.creativeItems = Item.getCreativeItemsAndGroups(p.getGameVersion());
++                if (p.isCreative()) {
++                    pk.creativeItems = Item.getCreativeItemsAndGroups(p.getGameVersion(), p);
++                } else {
++                    pk.creativeItems = Item.getCreativeItemsAndGroupsRaw(p.getGameVersion());
++                }
+             }
+             p.dataPacket(pk);
+         }
+Index: src/main/java/cn/nukkit/item/Item.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/cn/nukkit/item/Item.java b/src/main/java/cn/nukkit/item/Item.java
+--- a/src/main/java/cn/nukkit/item/Item.java	(revision a40a0f80c1012c48417757925845f54990e2fff5)
++++ b/src/main/java/cn/nukkit/item/Item.java	(date 1771796059352)
+@@ -794,31 +794,40 @@
+         //TODO Multiversion 添加新版本支持时修改这里
+     }
+ 
+-    public static ArrayList<Item> getCreativeItems() {
+-        Server.mvw("Item#getCreativeItems()");
+-        return getCreativeItems(GameVersion.getLastVersion());
++
++    public static ArrayList<Item> getCreativeItems(GameVersion protocol) {
++        return new ArrayList<>(getCreativeItemsAndGroups(protocol, null).getItems());
++    }
++
++    public static ArrayList<Item> getCreativeItems(Player player) {
++        return new ArrayList<>(getCreativeItemsAndGroups(player.getGameVersion(), player).getItems());
+     }
+ 
+-    @Deprecated
+-    public static ArrayList<Item> getCreativeItems(int protocol) {
+-        return new ArrayList<>(getCreativeItemsAndGroups(protocol).getItems());
+-    }
++    public static CreativeItems getCreativeItemsAndGroups(GameVersion protocol, Player player) {
++        CreativeItems original = getCreativeItemsAndGroupsRaw(protocol);
++        if (player == null) {
++            return original;
++        }
+ 
+-    public static ArrayList<Item> getCreativeItems(GameVersion gameVersion) {
+-        return new ArrayList<>(getCreativeItemsAndGroups(gameVersion).getItems());
+-    }
++        CreativeItems filtered = new CreativeItems();
++
++        for (CreativeItemGroup group : original.getGroups()) {
++            filtered.addGroup(group);
++        }
+ 
+-    public static CreativeItems getCreativeItemsAndGroups() {
+-        Server.mvw("Item#getCreativeItemsAndGroups()");
+-        return getCreativeItemsAndGroups(GameVersion.getLastVersion());
+-    }
++        for (Map.Entry<Item, CreativeItemGroup> entry : original.getContents().entrySet()) {
++            Item item = entry.getKey();
++            CreativeItemGroup group = entry.getValue();
++
++            if (ItemCreativePermissions.hasPermission(item, player)) {
++                filtered.add(item, group);
++            }
++        }
+ 
+-    @Deprecated
+-    public static CreativeItems getCreativeItemsAndGroups(int protocol) {
+-        return getCreativeItemsAndGroups(GameVersion.byProtocol(protocol, Server.getInstance().onlyNetEaseMode));
++        return filtered;
+     }
+ 
+-    public static CreativeItems getCreativeItemsAndGroups(GameVersion protocol) {
++    public static CreativeItems getCreativeItemsAndGroupsRaw(GameVersion protocol) {
+         switch (protocol) {
+             case V1_1_0:
+                 return Item.creative113;
+@@ -1065,7 +1074,7 @@
+     }
+ 
+     public static void removeCreativeItem(GameVersion protocol, Item item) {
+-        Item.getCreativeItemsAndGroups(protocol).getContents().remove(item);
++        Item.getCreativeItemsAndGroups(protocol, null).getContents().remove(item);
+     }
+ 
+     public static boolean isCreativeItem(Item item) {
+@@ -1079,7 +1088,7 @@
+     }
+ 
+     public static boolean isCreativeItem(GameVersion gameVersion, Item item) {
+-        for (Item aCreative : Item.getCreativeItemsAndGroups(gameVersion).getItems()) {
++        for (Item aCreative : Item.getCreativeItemsAndGroups(gameVersion, null).getItems()) {
+             if (item.equals(aCreative, !item.isTool())) {
+                 return true;
+             }
