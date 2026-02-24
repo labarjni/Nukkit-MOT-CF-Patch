@@ -104,11 +104,11 @@ You can check for multiple IDs, meta values, or even custom names.
 import cn.nukkit.item.Item;
 
 ItemCreativePermissions.registerPermissionGroup("builder.structure",item ->{
-int id = item.getId();
-    return id ==Item.COMMAND_BLOCK ||
-id ==Item.CHAIN_COMMAND_BLOCK ||
-id ==Item.REPEATING_COMMAND_BLOCK ||
-id ==Item.STRUCTURE_BLOCK;
+    int id = item.getId();
+    return id == Item.COMMAND_BLOCK ||
+        id == Item.CHAIN_COMMAND_BLOCK ||
+        id == Item.REPEATING_COMMAND_BLOCK ||
+        id == Item.STRUCTURE_BLOCK;
 });
 ```
 
@@ -124,14 +124,8 @@ Since the condition is a `java.util.function.Predicate<Item>`, you can implement
 import cn.nukkit.item.Item;
 
 ItemCreativePermissions.registerPermissionGroup("dev.tools",item ->{
-        if(!item.
-
-hasCustomName())return false;
-        return item.
-
-getCustomName().
-
-contains("[DEV]");
+        if (!item.hasCustomName()) return false;
+        return item.getCustomName().contains("[DEV]");
 });
 ```
 
