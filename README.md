@@ -1,6 +1,6 @@
 # Creative Filter Patch
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## 🧩 Designed for
 [![Nukkit-MOT](https://avatars.githubusercontent.com/u/62042238?s=48&v=4)](https://github.com/MemoriesOfTime/Nukkit-MOT)
@@ -79,7 +79,6 @@ Use `ItemCreativePermissions.registerPermissionGroup` to define items and the pe
 
 ```java
 import cn.nukkit.item.Item;
-import cn.nukkit.item.ItemCreativePermissions;
 import cn.nukkit.plugin.PluginBase;
 
 public class MyPlugin extends PluginBase {
@@ -87,7 +86,7 @@ public class MyPlugin extends PluginBase {
     @Override
     public void onEnable() {
         ItemCreativePermissions.registerPermissionGroup("admin.bedrock", item -> item.getId() == Item.BEDROCK);
-        
+
         getLogger().info("Bedrock is now restricted to players with 'nukkit.creativeitem.admin.bedrock'");
     }
 }
@@ -103,14 +102,13 @@ You can check for multiple IDs, meta values, or even custom names.
 
 ```java
 import cn.nukkit.item.Item;
-import cn.nukkit.item.ItemCreativePermissions;
 
-ItemCreativePermissions.registerPermissionGroup("builder.structure", item -> {
-    int id = item.getId();
-    return id == Item.COMMAND_BLOCK || 
-           id == Item.CHAIN_COMMAND_BLOCK || 
-           id == Item.REPEATING_COMMAND_BLOCK ||
-           id == Item.STRUCTURE_BLOCK;
+ItemCreativePermissions.registerPermissionGroup("builder.structure",item ->{
+int id = item.getId();
+    return id ==Item.COMMAND_BLOCK ||
+id ==Item.CHAIN_COMMAND_BLOCK ||
+id ==Item.REPEATING_COMMAND_BLOCK ||
+id ==Item.STRUCTURE_BLOCK;
 });
 ```
 
@@ -124,11 +122,16 @@ Since the condition is a `java.util.function.Predicate<Item>`, you can implement
 
 ```java
 import cn.nukkit.item.Item;
-import cn.nukkit.item.ItemCreativePermissions;
 
-ItemCreativePermissions.registerPermissionGroup("dev.tools", item -> {
-    if (!item.hasCustomName()) return false;
-    return item.getCustomName().contains("[DEV]");
+ItemCreativePermissions.registerPermissionGroup("dev.tools",item ->{
+        if(!item.
+
+hasCustomName())return false;
+        return item.
+
+getCustomName().
+
+contains("[DEV]");
 });
 ```
 
@@ -145,7 +148,6 @@ import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
 import cn.nukkit.event.player.PlayerInventoryTransactionEvent;
 import cn.nukkit.item.Item;
-import cn.nukkit.item.ItemCreativePermissions;
 import cn.nukkit.plugin.PluginBase;
 
 public class CreativeGuard extends PluginBase implements Listener {
@@ -162,7 +164,7 @@ public class CreativeGuard extends PluginBase implements Listener {
         }
 
         Item item = event.getTransaction().getSourceItem();
-        
+
         if (!ItemCreativePermissions.hasPermission(item, event.getPlayer())) {
             event.setCancelled();
             event.getPlayer().sendMessage("§cYou do not have permission to use this item");
