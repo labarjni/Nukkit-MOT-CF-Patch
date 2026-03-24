@@ -29,7 +29,7 @@ tasks.register("applyPatches") {
             val exitCode = process.waitFor()
 
             if (exitCode != 0) {
-                println("Failed to apply patch ${patch.name}:\n${output}")
+                println("Failed to apply patch ${patch.name}:\n${output.toString()}")
                 throw GradleException("Patch ${patch.name} failed to apply.")
             }
         }

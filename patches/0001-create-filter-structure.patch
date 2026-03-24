@@ -1,0 +1,86 @@
+Subject: [PATCH] 0001-create-filter-structure
+---
+Index: src/main/java/cn/nukkit/item/Item.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/cn/nukkit/item/Item.java b/src/main/java/cn/nukkit/item/Item.java
+--- a/src/main/java/cn/nukkit/item/Item.java	(revision e119d1c2ee8cb6ca90754e878ba4a80c99575930)
++++ b/src/main/java/cn/nukkit/item/Item.java	(date 1774381908098)
+@@ -616,6 +616,36 @@
+         CREATIVE_ITEMS.clear();
+     }
+ 
++    public static ArrayList<Item> getCreativeItems(Player player) {
++        return new ArrayList<>(getFilteredCreativeItems(player).getItems());
++    }
++
++    public static CreativeItems getFilteredCreativeItems(Player player) {
++        if (player == null) {
++            return getCreativeItemsAndGroups();
++        }
++
++        CreativeItems original = getCreativeItemsAndGroups();
++        CreativeItems filtered = new CreativeItems();
++
++        // Copy groups
++        for (CreativeItemGroup group : original.getGroups()) {
++            filtered.addGroup(group);
++        }
++
++        // Filter items by permissions
++        for (Map.Entry<Item, CreativeItemGroup> entry : original.getContents().entrySet()) {
++            Item item = entry.getKey();
++            CreativeItemGroup group = entry.getValue();
++
++            if (ItemCreativePermissions.hasPermission(item, player)) {
++                filtered.add(item, group);
++            }
++        }
++
++        return filtered;
++    }
++
+     public static ArrayList<Item> getCreativeItems() {
+         return new ArrayList<>(getCreativeItemsAndGroups().getItems());
+     }
+@@ -734,7 +764,7 @@
+     }
+ 
+     public static boolean isCreativeItem(GameVersion gameVersion, Item item) {
+-        for (Item aCreative : Item.getCreativeItemsAndGroups().getItems(gameVersion)) {
++        for (Item aCreative : CREATIVE_ITEMS.getItems(gameVersion)) {
+             if (item.equals(aCreative, !item.isTool())) {
+                 return true;
+             }
+Index: src/main/java/cn/nukkit/inventory/PlayerInventory.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/cn/nukkit/inventory/PlayerInventory.java b/src/main/java/cn/nukkit/inventory/PlayerInventory.java
+--- a/src/main/java/cn/nukkit/inventory/PlayerInventory.java	(revision e119d1c2ee8cb6ca90754e878ba4a80c99575930)
++++ b/src/main/java/cn/nukkit/inventory/PlayerInventory.java	(date 1774381943389)
+@@ -592,7 +592,7 @@
+                 pk.windowid = ContainerSetContentPacketV113.SPECIAL_CREATIVE;
+                 pk.eid = p.getId();
+                 if (!p.isSpectator()) {
+-                    pk.slots = Item.getCreativeItems(p.getGameVersion()).toArray(Item.EMPTY_ARRAY);
++                    pk.slots = Item.getCreativeItems(p).toArray(Item.EMPTY_ARRAY);
+                 }
+                 p.dataPacket(pk);
+             } else {
+@@ -606,7 +606,11 @@
+         } else {
+             CreativeContentPacket pk = new CreativeContentPacket();
+             if (!p.isSpectator()) {
+-                pk.creativeItems = Item.getCreativeItemsAndGroups(p.getGameVersion());
++                if (p.isCreative()) {
++                    pk.creativeItems = Item.getFilteredCreativeItems(p);
++                } else {
++                    pk.creativeItems = Item.getCreativeItemsAndGroups();
++                }
+             }
+             p.dataPacket(pk);
+         }
